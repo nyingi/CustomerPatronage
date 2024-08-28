@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
 namespace CustomerPatronage.Persistance
 {
-    public class FileManager
+    internal class FileManager
     {
         private readonly string baseDirectory;
 

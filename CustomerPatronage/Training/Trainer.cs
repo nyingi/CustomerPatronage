@@ -19,13 +19,20 @@ namespace CustomerPatronage.Training
             mlContext = new MLContext();
         }
 
-        private void TrainModel(
+        public void TrainModel(
             IEnumerable<HistoricalPurchaseData> data,
             string modelName,
             int predictionMonthsWindow, 
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Func<HistoricalPurchaseData,bool>? fnFilter = null)
         {
 
+            if(data == null || !data.Any())
+            {
+                throw new ArgumentNullException(nameof(data), $"Model training cannot proceed if {nameof(data)} is null or empty");
+            }
+
+            data = fnFilter == null ? data : data.Where(fnFilter);
             // Calculate baseline averages for fallback
             var metadata = new ModelMetadata
             {
@@ -54,7 +61,12 @@ namespace CustomerPatronage.Training
                 }
 
                 var model = trainingPipeline.Fit(trainingData);
-                
+                Save(
+                    model: model,
+                    modelMetadata: metadata,
+                    modelName: modelName,
+                    predictionMonthsWindow: predictionMonthsWindow
+                );
                 
             }, cancellationToken);
 

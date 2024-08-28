@@ -4,12 +4,33 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NullableReferenceTypes>true</NullableReferenceTypes> 
+    <NullableReferenceTypes>true</NullableReferenceTypes>
+
+    <!-- NuGet package properties -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Nyingi.CustomerPatronage</PackageId>
+    <Version>1.0.0-beta02</Version>
+    <Authors>Nyingi Maina</Authors>
+    <Company>Nyingi Maina</Company>
+    <Product>Customer Patronage Predictor</Product>
+    <Description>A library for training machine learning models to predict customer spending and visit frequency based on historical data.</Description>
+    <PackageTags>ML.NET; MachineLearning; CustomerPatronage; Training</PackageTags>
+    <RepositoryUrl>https://github.com/nyingi/CustomerPatronage.git</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/nyingi/CustomerPatronage</PackageProjectUrl>
+    <PackageIcon>artificial-intelligence.png</PackageIcon>
+    <PackageReleaseNotes>Initial release of CustomerPatronage.Training library for training predictive models.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ML" Version="3.0.1" />
     <PackageReference Include="Microsoft.ML.FastTree" Version="3.0.1" />
   </ItemGroup>
+
+  <ItemGroup>
+   
+    <None Include="assets\artificial-intelligence.png" Pack="true" PackagePath="\"/>
+   
+</ItemGroup>
 
 </Project>
