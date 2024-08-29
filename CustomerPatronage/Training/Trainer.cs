@@ -1,15 +1,15 @@
 using System.Text.Json;
 using CustomerPatronage.Persistance;
 using Microsoft.ML;
-
-
+using System.Collections.Generic;
+using System.Linq;
+using System;
+using System.IO;
 
 namespace CustomerPatronage.Training
 {
     public class Trainer
     {
-        
-
         public event Action<float> OnTrainingProgress = (_) => { }; // Event to report training progress
 
         private readonly MLContext mlContext;
@@ -23,16 +23,15 @@ namespace CustomerPatronage.Training
             IEnumerable<HistoricalPurchaseData> data,
             string modelName,
             int predictionMonthsWindow, 
-            CancellationToken cancellationToken,
             Func<HistoricalPurchaseData,bool>? fnFilter = null)
         {
-
-            if(data == null || !data.Any())
+            if (data == null || !data.Any())
             {
                 throw new ArgumentNullException(nameof(data), $"Model training cannot proceed if {nameof(data)} is null or empty");
             }
 
             data = fnFilter == null ? data : data.Where(fnFilter);
+
             // Calculate baseline averages for fallback
             var metadata = new ModelMetadata
             {
@@ -40,7 +39,8 @@ namespace CustomerPatronage.Training
                 AverageFrequency = data.GroupBy(d => d.CustomerId).Average(g => g.Count() / (float)predictionMonthsWindow),
             };
 
-            var trainingData = PrepareTrainingData(data,predictionMonthsWindow);
+            var trainingData = PrepareTrainingData(data, predictionMonthsWindow);
+
             var dataProcessPipeline = mlContext.Transforms.Concatenate("Features",
                 nameof(PurchasePredictionInput.DaysSinceLastPurchase),
                 nameof(PurchasePredictionInput.DaysBetweenPurchases),
@@ -52,28 +52,18 @@ namespace CustomerPatronage.Training
 
             var trainingPipeline = dataProcessPipeline.Append(trainer);
 
-            var trainingOperation = Task.Run(() =>
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine("Training cancelled.");
-                    return;
-                }
-
-                var model = trainingPipeline.Fit(trainingData);
-                Save(
-                    model: model,
-                    modelMetadata: metadata,
-                    modelName: modelName,
-                    predictionMonthsWindow: predictionMonthsWindow
-                );
-                
-            }, cancellationToken);
-
-            trainingOperation.Wait(cancellationToken);
+            var model = trainingPipeline.Fit(trainingData);
+            Save(
+                inputSchema: trainingData.Schema,
+                model: model,
+                modelMetadata: metadata,
+                modelName: modelName,
+                predictionMonthsWindow: predictionMonthsWindow
+            );
         }
 
         private void Save(
+            DataViewSchema inputSchema,
             ITransformer model,
             ModelMetadata modelMetadata,
             string modelName,
@@ -84,7 +74,7 @@ namespace CustomerPatronage.Training
                 modelName: modelName,
                 predictionMonthsWindow: predictionMonthsWindow
             );
-            if(!Directory.Exists(trainingDataDirectory))
+            if (!Directory.Exists(trainingDataDirectory))
             {
                 Directory.CreateDirectory(trainingDataDirectory);
             }
@@ -93,9 +83,9 @@ namespace CustomerPatronage.Training
                 predictionMonthsWindow: predictionMonthsWindow
             );
             mlContext.Model.Save(
-                    model:model,
-                    inputSchema: null,
-                    filePath: filepaths.ModelPath);
+                model: model,
+                inputSchema: inputSchema,
+                filePath: filepaths.ModelPath);
             File.WriteAllText(
                 path: filepaths.MetadataPath,
                 contents: JsonSerializer.Serialize(
@@ -111,6 +101,7 @@ namespace CustomerPatronage.Training
             int predictionMonthsWindow)
         {
             var featureData = new List<PurchasePredictionInput>();
+
             var groupedData = data.GroupBy(d => d.CustomerId);
 
             foreach (var group in groupedData)
@@ -140,16 +131,13 @@ namespace CustomerPatronage.Training
                         DaysSinceLastPurchase = daysSinceLastPurchase,
                         DaysBetweenPurchases = daysBetweenPurchases,
                         CumulativeSpend = (float)cumulativeSpend,
-                        PurchaseFrequency = purchaseFrequency
+                        PurchaseFrequency = purchaseFrequency,
+                        Label = expectedSpend
                     });
                 }
             }
 
             return mlContext.Data.LoadFromEnumerable(featureData);
         }
-
-        
-
-        
     }
 }

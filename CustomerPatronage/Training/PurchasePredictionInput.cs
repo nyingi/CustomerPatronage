@@ -7,6 +7,7 @@ namespace CustomerPatronage.Training
         public float DaysSinceLastPurchase { get; set; }
         public float DaysBetweenPurchases { get; set; }
         public float CumulativeSpend { get; set; }
-        public float PurchaseFrequency { get; set; }    
+        public float PurchaseFrequency { get; set; }
+        public float Label { get; internal set; }
     }
 }

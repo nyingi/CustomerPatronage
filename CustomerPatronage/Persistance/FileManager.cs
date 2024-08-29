@@ -10,7 +10,7 @@ namespace CustomerPatronage.Persistance
                 AppDomain.CurrentDomain.BaseDirectory,
                 "customer-patronage"
             );
-        }
+        }   
 
         public (string ModelPath, string MetadataPath) GetFilePaths(string modelName,int predictionMonthsWindow)
         {

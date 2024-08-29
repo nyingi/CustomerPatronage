@@ -4,7 +4,7 @@ namespace CustomerPatronage.Prediction
     {
         public string CustomerId { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
-        public decimal ExpectedSpend { get; set; }
+        public float ExpectedSpend { get; set; }
         public float PurchaseFrequency { get; set; }
         public bool IsBaseline { get; set; } // Flag to indicate if this is a baseline prediction
     }

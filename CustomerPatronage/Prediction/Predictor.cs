@@ -103,7 +103,7 @@ namespace CustomerPatronage.Prediction
             var prediction = predictionEngine.Predict(input);
 
             // If prediction output is below a certain threshold, we may assume this is a cold start case
-            if (prediction.ExpectedSpend < 0.01M && prediction.PurchaseFrequency < 0.01f)
+            if (prediction.ExpectedSpend < 0.01f && prediction.PurchaseFrequency < 0.01f)
             {
                 // Return baseline prediction with the flag set
                 return new PurchasePredictionOutput
