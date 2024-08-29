@@ -12,11 +12,16 @@ namespace CustomerPatronage.Persistance
             );
         }   
 
-        public (string ModelPath, string MetadataPath) GetFilePaths(string modelName,int predictionMonthsWindow)
+        public (string ModelPath, string MetadataPath, string CustomerHistoryPath) GetFilePaths(string modelName,int predictionMonthsWindow)
         {
             var modelPath = GetModelPath(modelName: modelName, predictionMonthsWindow: predictionMonthsWindow);
             var metadataPath = GetMetadataPath(modelName: modelName, predictionMonthsWindow: predictionMonthsWindow);
-            return (ModelPath: modelPath, MetadataPath: metadataPath);
+            var customerHistoryPath = GetFinalPath(
+                filename: "customer_history.json",
+                modelName: modelName,
+                predictionMonthsWindow: predictionMonthsWindow
+            );
+            return (ModelPath: modelPath, MetadataPath: metadataPath, CustomerHistoryPath: customerHistoryPath);
         }
 
          public string GetTrainingDataPath(
