@@ -40,7 +40,6 @@ namespace CustomerPatronage.Training
             };
 
             var trainingData = PrepareTrainingData(data, predictionMonthsWindow);
-
             var dataProcessPipeline = mlContext.Transforms.Concatenate("Features",
                 nameof(PurchasePredictionInput.DaysSinceLastPurchase),
                 nameof(PurchasePredictionInput.DaysBetweenPurchases),
@@ -53,6 +52,7 @@ namespace CustomerPatronage.Training
             var trainingPipeline = dataProcessPipeline.Append(trainer);
 
             var model = trainingPipeline.Fit(trainingData);
+
             Save(
                 inputSchema: trainingData.Schema,
                 model: model,
@@ -60,6 +60,8 @@ namespace CustomerPatronage.Training
                 modelName: modelName,
                 predictionMonthsWindow: predictionMonthsWindow
             );
+
+            SaveCustomerHistory(data,predictionMonthsWindow);
         }
 
         private void Save(
@@ -101,12 +103,14 @@ namespace CustomerPatronage.Training
             int predictionMonthsWindow)
         {
             var featureData = new List<PurchasePredictionInput>();
+            var customerHistory = new Dictionary<string, List<PurchasePredictionInput>>();
 
             var groupedData = data.GroupBy(d => d.CustomerId);
 
             foreach (var group in groupedData)
             {
                 var sortedPurchases = group.OrderBy(d => d.PurchaseDate).ToList();
+                var history = new List<PurchasePredictionInput>();
                 for (int i = 0; i < sortedPurchases.Count - 1; i++)
                 {
                     var currentPurchase = sortedPurchases[i];
@@ -124,7 +128,63 @@ namespace CustomerPatronage.Training
                     var cumulativeSpend = sortedPurchases.Take(i + 1).Sum(p => p.Spend);
                     var purchaseFreq = i == 0 ? 0 : i / (float)(currentPurchase.PurchaseDate - sortedPurchases.First().PurchaseDate).TotalDays;
 
-                    featureData.Add(new PurchasePredictionInput
+                    var predictionInput = new PurchasePredictionInput
+                    {
+                        CustomerId = currentPurchase.CustomerId,
+                        CustomerName = currentPurchase.CustomerName,
+                        DaysSinceLastPurchase = daysSinceLastPurchase,
+                        DaysBetweenPurchases = daysBetweenPurchases,
+                        CumulativeSpend = (float)cumulativeSpend,
+                        PurchaseFrequency = purchaseFrequency,
+                        Label = expectedSpend
+                    };
+
+                    featureData.Add(predictionInput);
+                    history.Add(predictionInput);
+                }
+
+                customerHistory[group.Key] = history;
+            }
+
+            return mlContext.Data.LoadFromEnumerable(featureData);
+        }
+
+        private void SaveCustomerHistory(IEnumerable<HistoricalPurchaseData> data, int predictionMonthsWindow)
+        {
+            var customerHistory = PrepareCustomerHistory(data,predictionMonthsWindow);
+            var filePath = "customer_history.json";
+            File.WriteAllText(filePath, JsonSerializer.Serialize(customerHistory, new JsonSerializerOptions { WriteIndented = true }));
+        }
+
+        private Dictionary<string, List<PurchasePredictionInput>> PrepareCustomerHistory(
+            IEnumerable<HistoricalPurchaseData> data,
+            int predictionMonthsWindow)
+        {
+            var customerHistory = new Dictionary<string, List<PurchasePredictionInput>>();
+            var groupedData = data.GroupBy(d => d.CustomerId);
+
+            foreach (var group in groupedData)
+            {
+                var sortedPurchases = group.OrderBy(d => d.PurchaseDate).ToList();
+                var history = new List<PurchasePredictionInput>();
+                for (int i = 0; i < sortedPurchases.Count - 1; i++)
+                {
+                    var currentPurchase = sortedPurchases[i];
+                    var futurePurchases = sortedPurchases.Skip(i + 1)
+                        .Where(p => p.PurchaseDate <= currentPurchase.PurchaseDate.AddMonths(predictionMonthsWindow))
+                        .ToList();
+
+                    if (futurePurchases.Count == 0) continue;
+
+                    var expectedSpend = futurePurchases.Sum(p => p.Spend);
+                    var purchaseFrequency = futurePurchases.Count / (float)predictionMonthsWindow;
+
+                    var daysSinceLastPurchase = i == 0 ? 0 : (float)(currentPurchase.PurchaseDate - sortedPurchases[i - 1].PurchaseDate).TotalDays;
+                    var daysBetweenPurchases = i == 0 ? 0 : daysSinceLastPurchase;
+                    var cumulativeSpend = sortedPurchases.Take(i + 1).Sum(p => p.Spend);
+                    var purchaseFreq = i == 0 ? 0 : i / (float)(currentPurchase.PurchaseDate - sortedPurchases.First().PurchaseDate).TotalDays;
+
+                    history.Add(new PurchasePredictionInput
                     {
                         CustomerId = currentPurchase.CustomerId,
                         CustomerName = currentPurchase.CustomerName,
@@ -135,9 +195,11 @@ namespace CustomerPatronage.Training
                         Label = expectedSpend
                     });
                 }
+
+                customerHistory[group.Key] = history;
             }
 
-            return mlContext.Data.LoadFromEnumerable(featureData);
+            return customerHistory;
         }
     }
 }
