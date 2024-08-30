@@ -16,7 +16,7 @@ namespace CustomerPatronage.Prediction
 
         public Predictor()
         {
-            LoadCustomerHistory();
+            
         }
 
         private (ITransformer Model, ModelMetadata ModelMetadata) LoadModel(
@@ -28,6 +28,7 @@ namespace CustomerPatronage.Prediction
                 modelName: modelName,
                 predictionMonthsWindow: predictionMonthsWindow
             );
+            
 
             ITransformer? model = default;
             ModelMetadata? modelMetadata = default;
@@ -52,6 +53,11 @@ namespace CustomerPatronage.Prediction
             loadFile(filePaths.MetadataPath, (metadataPath) =>
             {
                 modelMetadata = JsonSerializer.Deserialize<ModelMetadata>(File.ReadAllText(metadataPath));
+            });
+
+            loadFile(filePaths.CustomerHistoryPath, (fileHistoryPath) =>
+            {
+                LoadCustomerHistory(fileHistoryPath);
             });
 
             return (model!, modelMetadata!);
@@ -141,9 +147,8 @@ namespace CustomerPatronage.Prediction
             return prediction;
         }
 
-        private void LoadCustomerHistory()
+        private void LoadCustomerHistory(string filePath)
         {
-            var filePath = "customer_history.json";
             if (File.Exists(filePath))
             {
                 customerHistory = JsonSerializer.Deserialize<Dictionary<string, List<PurchasePredictionInput>>>(File.ReadAllText(filePath)) ?? new();
